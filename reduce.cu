@@ -88,6 +88,7 @@ __global__ void reduce_sum_using_manual_syncwarp(int* temp, int32_t count) {
 //    shmem[tid] += shmem[tid + 2]; __syncwarp();
 //    shmem[tid] += shmem[tid + 1]; __syncwarp();
 
+
     if (tid == 0) temp[0] = shmem[0];
 
 }
