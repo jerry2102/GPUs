@@ -33,7 +33,20 @@ Volta的SM较上一代Pascal有很多改进：
 
 ![Volta SM](images/Volta-GV100-Streaming-Multiprocessor.png)
 
-### Tensor Core
+## Tensor Core
+Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8个Tensor Core。
+
+**QA: Volta Tensor Core算力是Pascal的12倍是如何计算出来的？**
+
+``` shell
+# Volta Tensor Core算力 (FMA是两个指令，所以最后要乘2)
+1530 Mhz * 10^6 * 80 SM * 8 TensorCore/SM * 64 FMA/cycle * 2 = 125.33 TFLOPS
+#Pascal FP32 CUDA Core算力(FMA是两个指令，所以最后要乘2)
+1480 MHz * 10^6 * 56 SM * 64 FP32 Core/SM * 2 = 10.6 TFLOPS
+125.33 / 10.6 = 12
+```
+
+
 
 ## Independent Thread Scheduling(ITS)
 Pascal及以前的架构，其SIMT执行模型，将32个线程组成一个warp作为一个最小的调度单元。当程序中出现diverge时，warp中threads的执行路径会按divergence串行执行，直到所有thread重新聚合。该机制的根本原因在于，pre-Pascal架构，每个warp只有一个程序计数器（PC），同一warp的32个线程共享相同的PC，这导致同一warp中threads diverge时，只能串行执行，而diverge的分支逻辑间如果有数据依赖时，将导致warp死所等问题。
