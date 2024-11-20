@@ -9,7 +9,7 @@ Volta的SM较上一代Pascal有很多改进：
     Many applications have inner loops that perform pointer arithmetic (integer memory address calculations) combined with floating-point computations that will benefit from simultaneous execution of FP32 and INT32 instructions. Each iteration of a pipelined loop can update addresses (INT32 pointer arithmetic) and load data for the next iteration while simultaneously processing the current iteration in FP32.
 
 - Processing Blocks的划分：
-    - Pascal将每个SM划分为2个Processing Blocks，Volta将每个SM划分成4个Processing Blocks，对比如下：
+    - Pascal将每个SM划分为2个Processing Blocks，Volta将每个SM划分成4个Processing Blocks，对比如下。虽然划分方式不同，Volta每个SM的Register File总容量和Pascal一样都是256KB（16K * 4Byte/ProcessingBlock * 4 ProcessingBlock/SM = 256KB/SM）。Volta还实现了新的L0 Instruction Cache，较Pascal的Instruction Buffer效率更高。整体上来说，Volta的这种划分方式可以提高SM利用率和整体性能。
 
         | Architecuture | Pascal | Volta |
         |---------------|--------|-------|
@@ -24,8 +24,11 @@ Volta的SM较上一代Pascal有很多改进：
         | Instruction Buffer / PB | Y | - |
         | L0 Instruction Cache / PB | - | Y |
 
-        此外，Volta将每个SM中的L1 DataCache和Shared Memory进行了合并，使得L1 Cache的访问效率像Shared Memory一样高（Shared Memory的访问效率较高？）。合并后的容量是128KB/SM。如果kernel没有使用到Shared Memory，则这128KB都会被当成L1 Data Cache使用，来对streaming data提供高带宽支持或者对频繁访问的数据提供低延迟访问支持，通过这种机制Volta缩小了显式Shared Memory和不使用shared memory直接访问device memory这两种操作键的性能gap。同时Volta的L1 Cache/Shared Memory也实现了对写的支持，进一步加速了性能。
-        > Integration within the shared memory block ensures the Volta GV100 L1 cache has much lower latency and higher bandwidth than the L1 caches in past NVIDIA GPUs. The L1 In Volta functions as a high-throughput conduit for streaming data while simultaneously providing high-bandwidth and low-latency access to frequently reused data—the best of both worlds. This combination is unique to Volta and delivers more accessible performance than in the past.
+
+- L1 Data Cache：Volta将每个SM中的L1 DataCache和Shared Memory进行了合并，使得L1 Cache的访问效率像Shared Memory一样高（Shared Memory的访问效率较高？）。合并后的容量是128KB/SM。如果kernel没有使用到Shared Memory，则这128KB都会被当成L1 Data Cache使用，来对streaming访问模式提供高带宽缓存支持，或者对频繁访问的数据提供低延迟访问支持，通过这种机制Volta缩小了显式Shared Memory和不使用shared memory直接访问device memory这两种操作键的性能gap（即使没有显式使用Shared Memory，Volta可以隐式的利用L1 DataCache来加速对Global Memory的访问，就像用户显示使用Shared Memory一样）。Nvidia做实验验证，在Volta架构下，一些计算任务不使用shared memory较使用shared memory性能损失只有7%，而对Pascal等架构其性能损失能达到30%。同时Volta的L1 Cache/Shared Memory也实现了对写的支持，进一步加速了性能。
+
+    > The L1 In Volta functions as a high-throughput conduit for streaming data while simultaneously providing high-bandwidth and low-latency access to frequently reused data—the best of both worlds. This combination is unique to Volta and delivers more accessible performance than in the past.
+     With Volta GV100, the merging of shared memory and L1 delivers a high-speed path to global memory capable of streaming access with unlimited cachemisses in flight. Prior NVIDIA GPUs only performed load caching, while GV100 introduces writecaching (caching of store operations) to further improve performance.
 
 
 ![Volta SM](images/Volta-GV100-Streaming-Multiprocessor.png)
@@ -33,6 +36,22 @@ Volta的SM较上一代Pascal有很多改进：
 ### Tensor Core
 
 ## Independent Thread Scheduling(ITS)
+Pascal及以前的架构，其SIMT执行模型，将32个线程组成一个warp作为一个最小的调度单元。当程序中出现diverge时，warp中threads的执行路径会按divergence串行执行，直到所有thread重新聚合。该机制的根本原因在于，pre-Pascal架构，每个warp只有一个程序计数器（PC），同一warp的32个线程共享相同的PC，这导致同一warp中threads diverge时，只能串行执行，而diverge的分支逻辑间如果有数据依赖时，将导致warp死所等问题。
+``` cpp
+if (condition) {
+    A;  // 如果执行A/B的threads对执行X/Y的线程有数据依赖，将导致warp在A/B卡死。
+    B;
+} else {
+    X;
+    Y;
+}
+```
+Volta为每个线程设置了一个独立的程序计数器（PC），使每个线程有自己独立的执行环境。运行时Warp Scheduler仍然以warp为基本单位，每个时钟周期执行一条指令，但是不同分支的线程有平等的调度机会，即使前序分支阻塞了，后序分支只要满足其分支条件就可以执行。这解决了pre-Pascal架构中由于分支串行机制导致的死锁问题。（为了最大化并行执行效率，Volta引入了Schedule Optimizer来判决如何对一个warp中的活跃线程分组为SIMT执行单元。这样同一个warp中的线程可以以sub-warp的粒度进行diverge和recoverge，同时Convergence Optimizer仍然会将执行相同代码的线程分组在一起以获得最大并行效率）
+> Volta’s independent thread scheduling allows the GPU to yield execution of any thread, either to make better use of execution resources or to allow one thread to wait for data to be produced by another. To maximize parallel efficiency, Volta includes a schedule optimizer which determines how to group active threads from the same warp together into SIMT units. This retains the high throughput of SIMT execution as in prior NVIDIA GPUs, but with much more flexibility: threads can now diverge and reconverge at sub-warp granularity, while the convergence optimizer in Volta will still group together threads which are executing the same code and run them in parallel for maximum efficiency
 
+
+Volta ITS的引入，使得pre-Pascal架构中广泛采用的Implicit Warp Level Synchronize机制变得，因而在Volta中引入了显式的Warp Level Primitive。
+
+Volta ITS的引入，使得Volta可以做到任意线程的组合，也成为Cooperative Group机制得以实现的基础。
 
 ### Cooperative Group
