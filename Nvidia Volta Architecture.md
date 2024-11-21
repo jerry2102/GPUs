@@ -30,21 +30,31 @@ Volta的SM较上一代Pascal有很多改进：
     > The L1 In Volta functions as a high-throughput conduit for streaming data while simultaneously providing high-bandwidth and low-latency access to frequently reused data—the best of both worlds. This combination is unique to Volta and delivers more accessible performance than in the past.
      With Volta GV100, the merging of shared memory and L1 delivers a high-speed path to global memory capable of streaming access with unlimited cachemisses in flight. Prior NVIDIA GPUs only performed load caching, while GV100 introduces writecaching (caching of store operations) to further improve performance.
 
-
-![Volta SM](images/Volta-GV100-Streaming-Multiprocessor.png)
+<center><img src="images/Volta-GV100-Streaming-Multiprocessor.png" alt="Volta Streaming Multiprocessor" height="400" /></center>
 
 ## Tensor Core
-Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8个Tensor Core。
+Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8个Tensor Core，即每个Processing Block或者每个Warp Scheduler含有2个Tensor Core，每个Tensor Core每时钟周期可以处理64个FMA操作，一个SM中8个Tensor Core每时钟周期可以处理```64 * 8 = 512```个FMA操作。
 
-**QA: Volta Tensor Core算力是Pascal的12倍是如何计算出来的？**
+
+**Q: Volta Tensor Core算力是Pascal的12倍是如何计算出来的？**  
+**A**: Volta Tensor Core算力是Pasacl的12倍源于[Volta Architecture Whitepaper](https://images.nvidia.cn/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf)中的如下段落：
+>Tesla V100’s Tensor Cores deliver up to 125 Tensor TFLOPS for training and inference
+applications. Tensor Cores provide up to 12x higher peak TFLOPS on Tesla V100 that can be
+applied to deep learning training compared to using standard FP32 operations on P100. 
+
+12倍的性能增益是以整张Tesla V100的Tensor Core算力和Tesla P100的CUDA Core算力进行比较的，以Tesla V100 GPU的tensor Core理论算力和Tesla P100 GPU的CUDA Core理论算力进行比较计算的，12倍综合了单SM引入Tensor Core带来的算力增益、GPU卡的主频增益和SM数量增益。参考[Volta Architecture Whitepaper](https://images.nvidia.cn/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf)文档Table 1中的Tesla各型号GPU参数，计算如下：
 
 ``` shell
 # Volta Tensor Core算力 (FMA是两个指令，所以最后要乘2)
 1530 Mhz * 10^6 * 80 SM * 8 TensorCore/SM * 64 FMA/cycle * 2 = 125.33 TFLOPS
 #Pascal FP32 CUDA Core算力(FMA是两个指令，所以最后要乘2)
 1480 MHz * 10^6 * 56 SM * 64 FP32 Core/SM * 2 = 10.6 TFLOPS
-125.33 / 10.6 = 12
+125.33 / 10.6 = 11.8 ≈ 12
+# 单个SM Tensor Core算力增益为Pascal中所有CUDA Core的8倍 x 主频增益 x SM数量增益
+8 * (1530 Mhz / 1480 Mhz) * (80 SM / 56 SM) = 11.8  ≈ 12
 ```
+
+
 
 
 
