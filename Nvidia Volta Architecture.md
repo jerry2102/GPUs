@@ -35,9 +35,22 @@ Volta的SM较上一代Pascal有很多改进：
 ## Tensor Core
 Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8个Tensor Core，即每个Processing Block或者每个Warp Scheduler含有2个Tensor Core，每个Tensor Core每时钟周期可以处理64个FMA操作，一个SM中8个Tensor Core每时钟周期可以处理```64 * 8 = 512```个FMA操作。
 
+每个Tensor Core支持如下4x4矩阵的乘加计算，其中**A**，**B**，**C**，**D**都是4x4矩阵，输入矩阵**A**和**B**是FP16精度，累加输出矩阵**C**和**D**的精度可以是FP16或FP32，因而Tensor Core对FP16的输入执行乘法操作后，对乘法结果执行FP32累加得到FP32的输出，是混合精度计算。
+
+**```D = A x B + C```**
+
+
+![Alt text](images/Matrix-Multiply-Accumulate-(MMA)-Operation.png)
+
+相比于Pascal每个SM有64个FP32 CUDA Core，Pascal SM每个时钟周期只能处理64个FMA，所以每个时钟周期Volta SM中Tensor Core计算能力是Pascal SM计算能力的8倍。或者直接按 ```４ｘ4 x 4```矩阵计算来比较，每个时钟周期一个Volta Tensor Core可以完成一个```４ｘ4 x 4```矩阵乘法，一个Volta SM含有8个Tensor Core，则一个Volta SM每个时钟周期可以完成8个 ```４ｘ4 x 4``` 矩阵乘法；而Pascal SM只有64个CUDA Core, ```４ｘ4 x 4```的乘法需要64次FMA，每个CUDA Core每cycle完成一个FMA操作，一个时钟周期内一个Pascal SM只能完成一个```４ｘ4 x 4```矩阵的计算，推算Volta SM Tensor Cores的算力是Pascal SM算力的8倍。
+
+如下动图展示了Pascal CUDA Cores和Volta Tensor Core计算```４ｘ4.x 4```矩阵的图示：  
+*理解： **A**对应绿色矩阵，**B**对应紫色矩阵，矩阵**A**按column major方式存放，最左侧一列是**A<sub>0j</sub>**={a<sub>00</sub>, a<sub>01</sub>, a<sub>02</sub>, a<sub>03</sub>}，矩阵B按row major方式存放，最左侧为**B<sub>j0</sub>**={b<sub>00</sub>, b<sub>0</sub>, b<sub>20</sub>, b<sub>30</sub>}<sup>T</sup>，cub最左侧侧面对应了**C<sub>0k</sub>** = **A<sub>0j</sub>** x **B<sub>jk</sub>**,其j对应cube的top->down方向，矩阵相乘后沿j方向作accumulation消除j。*
+
+<center><img src="images/pascal%20vs%20volta%20tensor%20core.gif" alt="Volta Tensor Core Matrix FMA" height="250" /></center>
 
 **Q: Volta Tensor Core算力是Pascal的12倍是如何计算出来的？**  
-**A**: Volta Tensor Core算力是Pasacl的12倍源于[Volta Architecture Whitepaper](https://images.nvidia.cn/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf)中的如下段落：
+Volta Tensor Core算力是Pasacl的12倍源于[Volta Architecture Whitepaper](https://images.nvidia.cn/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf)中的如下段落：
 >Tesla V100’s Tensor Cores deliver up to 125 Tensor TFLOPS for training and inference
 applications. Tensor Cores provide up to 12x higher peak TFLOPS on Tesla V100 that can be
 applied to deep learning training compared to using standard FP32 operations on P100. 
