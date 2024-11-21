@@ -30,7 +30,7 @@ Volta的SM较上一代Pascal有很多改进：
     > The L1 In Volta functions as a high-throughput conduit for streaming data while simultaneously providing high-bandwidth and low-latency access to frequently reused data—the best of both worlds. This combination is unique to Volta and delivers more accessible performance than in the past.
      With Volta GV100, the merging of shared memory and L1 delivers a high-speed path to global memory capable of streaming access with unlimited cachemisses in flight. Prior NVIDIA GPUs only performed load caching, while GV100 introduces writecaching (caching of store operations) to further improve performance.
 
-<center><img src="images/Volta-GV100-Streaming-Multiprocessor.png" alt="Volta Streaming Multiprocessor" height="400" /></center>
+    <center><img src="images/Volta-GV100-Streaming-Multiprocessor.png" alt="Volta Streaming Multiprocessor" height="400" /></center>
 
 ## Tensor Core
 Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8个Tensor Core，即每个Processing Block或者每个Warp Scheduler含有2个Tensor Core，每个Tensor Core每时钟周期可以处理64个FMA操作，一个SM中8个Tensor Core每时钟周期可以处理```64 * 8 = 512```个FMA操作。
