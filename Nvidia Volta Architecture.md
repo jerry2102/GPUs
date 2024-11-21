@@ -45,7 +45,7 @@ Volta架构中引入了全新的矩阵乘加专用计算单元。中每个SM有8
 相比于Pascal每个SM有64个FP32 CUDA Core，Pascal SM每个时钟周期只能处理64个FMA，所以每个时钟周期Volta SM中Tensor Core计算能力是Pascal SM计算能力的8倍。或者直接按 ```４ｘ4 x 4```矩阵计算来比较，每个时钟周期一个Volta Tensor Core可以完成一个```４ｘ4 x 4```矩阵乘法，一个Volta SM含有8个Tensor Core，则一个Volta SM每个时钟周期可以完成8个 ```４ｘ4 x 4``` 矩阵乘法；而Pascal SM只有64个CUDA Core, ```４ｘ4 x 4```的乘法需要64次FMA，每个CUDA Core每cycle完成一个FMA操作，一个时钟周期内一个Pascal SM只能完成一个```４ｘ4 x 4```矩阵的计算，推算Volta SM Tensor Cores的算力是Pascal SM算力的8倍。
 
 如下动图展示了Pascal CUDA Cores和Volta Tensor Core计算```４ｘ4.x 4```矩阵的图示：  
-*理解： **A**对应绿色矩阵，**B**对应紫色矩阵，矩阵**A**按column major方式存放，最左侧一列是**A<sub>0j</sub>**={a<sub>00</sub>, a<sub>01</sub>, a<sub>02</sub>, a<sub>03</sub>}，矩阵B按row major方式存放，最左侧为**B<sub>j0</sub>**={b<sub>00</sub>, b<sub>0</sub>, b<sub>20</sub>, b<sub>30</sub>}<sup>T</sup>，cub最左侧侧面对应了**C<sub>0k</sub>** = **A<sub>0j</sub>** x **B<sub>jk</sub>**,其j对应cube的top->down方向，矩阵相乘后沿j方向作accumulation消除j。*
+*理解： **A**对应绿色矩阵，**B**对应紫色矩阵，矩阵**A**按column major方式存放，最左侧一列是矩阵**A**的第0行**A<sub>0j</sub>**={a<sub>00</sub>, a<sub>01</sub>, a<sub>02</sub>, a<sub>03</sub>}，矩阵B按row major方式存放，最左侧为矩阵**B**的第0列**B<sub>j0</sub>**={b<sub>00</sub>, b<sub>0</sub>, b<sub>20</sub>, b<sub>30</sub>}<sup>T</sup>，cub最左侧侧面对应了**C<sub>0k</sub>** = **A<sub>0j</sub>** x **B<sub>jk</sub>**,其j对应cube的top->down方向，矩阵相乘后沿j方向作accumulation消除j。*
 
 <center><img src="images/pascal%20vs%20volta%20tensor%20core.gif" alt="Volta Tensor Core Matrix FMA" height="250" /></center>
 
