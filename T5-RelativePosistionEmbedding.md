@@ -1,1 +1,4 @@
-原版Transformer里提出了一种基于sin和cos的position embedding (PE)，这里就不赘述了。总结一下，就是因为Transformer的self attention没有顺序信息，输入序列更改顺序，得到的结果是不变的。因此想到加入PE，给输入序列的每个单元一个仅与位置相关的embedding，这样，序列的单元改变顺序时，分配到的PE会发生变化，从而使self attention有了位置信息。原版Transformer里的PE是一种绝对的位置信息，可以记为 PE(pos)PE(pos)  PE(pos)   ；虽然理论上 PE(pos+k)=PE(pos)⋅Mat(k)PE(pos+k)=PE(pos) \cdot Mat(k)PE(pos+k)=PE(pos) \cdot Mat(k) ，等式右边是 PE(pos)PE(pos)PE(pos) 关于 kkk 的线性组合，但本质上这种相对位置性质没有显式地体现。更严重的是，当测试集里的样本长度远大于训练集中的普遍长度时，得到的位置编码 PE(pos>>)PE(pos_{>>})PE(pos_{>>}) 是网络没见过的，因此网络会得到不鲁棒的结果。
+
+[1] [Relative position embedding](https://zhuanlan.zhihu.com/p/364828960)
+transformer原生的PE是基于sin/cos函数的，在模型训练时输入序列长度有限，所以模型只能见到有限长度的Position Embedding，导致测试集里的样本长度远大于训练集中的普遍长度时，得到的位置编码是网络没见过的，因此网络会得到不鲁棒的结果。
+相对位置编码：
